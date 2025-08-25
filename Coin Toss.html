@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Coin Toss Game</title>
+<style>
+  body{
+    font-family: system-ui, sans-serif;
+    background: radial-gradient(circle at 50% -20%, #1a1f35, #0d1020 70%);
+    color: #eef1ff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100vh; margin:0;
+  }
+  h1{margin-bottom:10px}
+  .stage{width:200px; height:200px; perspective:1000px; margin:20px;}
+  .coin{
+    width:100%; height:100%; position:relative; transform-style:preserve-3d;
+    transform:rotateY(0deg) rotateX(10deg);
+    transition:transform 1.6s cubic-bezier(.19,.9,.2,1);
+    filter: drop-shadow(0 15px 25px rgba(0,0,0,.5));
+  }
+  .face{
+    position:absolute; inset:0; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:36px; font-weight:bold; backface-visibility:hidden;
+    border:8px solid #fff;
+  }
+  .front{background:gold; color:#222;}
+  .back{background:skyblue; color:#111; transform:rotateY(180deg);}
+  .btns{display:flex; gap:10px; margin-top:10px}
+  button{
+    padding:8px 14px; border:none; border-radius:6px; font-weight:bold;
+    cursor:pointer; background:#5b8cff; color:#fff;
+  }
+  #status{margin-top:10px; font-size:18px}
+</style>
+</head>
+<body>
+  <h1>Coin Toss</h1>
+  <div class="stage"><div id="coin" class="coin">
+    <div class="face front">HEADS</div>
+    <div class="face back">TAILS</div>
+  </div></div>
+
+  <div class="btns" id="choiceBtns">
+    <button data-choice="heads">Choose Heads</button>
+    <button data-choice="tails">Choose Tails</button>
+  </div>
+
+  <div id="status">Pick your side to start!</div>
+
+<script>
+const coin = document.getElementById('coin');
+const statusEl = document.getElementById('status');
+const choiceBtns = document.getElementById('choiceBtns');
+
+let spinning = false;
+let totalRot = 0;
+
+function randomOutcome(){ return Math.random()<0.5 ? 'heads':'tails'; }
+
+function toss(userChoice){
+  if (spinning) return;
+  spinning = true;
+  statusEl.textContent = `You picked ${userChoice.toUpperCase()}... Tossing!`;
+
+  // Decide outcome
+  const outcome = randomOutcome();
+
+  // Full spins + final offset
+  const spins = Math.floor(Math.random()*4)+6;
+  const endOffset = outcome==='heads'?0:180;
+  const tiltX = 10 + Math.random()*15;
+  const target = totalRot + spins*360 + endOffset;
+
+  coin.style.transition = `transform 1.8s cubic-bezier(.19,.9,.2,1)`;
+  coin.style.transform = `rotateY(${target}deg) rotateX(${tiltX}deg)`;
+
+  setTimeout(()=>{
+    totalRot = target;
+    spinning=false;
+    const win = userChoice===outcome;
+    statusEl.textContent = `It landed on ${outcome.toUpperCase()} — You ${win?'WIN 🎉':'LOSE ❌'}! Pick again.`;
+  },1800);
+}
+
+choiceBtns.addEventListener('click', e=>{
+  if(e.target.dataset.choice){
+    toss(e.target.dataset.choice);
+  }
+});
+</script>
+</body>
+</html>
