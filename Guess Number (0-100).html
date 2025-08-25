@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Guess the Number (0–100)</title>
+<style>
+  :root{
+    --bg:#0f1220; --card:#161a2b; --ink:#eef1ff; --muted:#98a0c0;
+    --accent:#5b8cff; --ok:#38d39f; --warn:#ffb020; --fail:#ff5c7a;
+    --radius:14px; --shadow:0 14px 40px rgba(0,0,0,.35);
+    /* range bar percentages (0..100) */
+    --low:0; --high:100;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+    background: radial-gradient(1200px 800px at 70% -10%, #1a1f35, #0d1020 60%, #080a14 100%);
+    color:var(--ink); -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+
+  .wrap{width:min(680px, 96vw); display:flex; flex-direction:column; gap:14px;}
+  header{display:flex; justify-content:space-between; align-items:center; gap:12px}
+  .badge{background:linear-gradient(135deg,#26305a,#171c35); padding:10px 14px; border-radius:999px; font-weight:700; border:1px solid #2a335d; box-shadow:var(--shadow)}
+  .stats{display:flex; gap:8px; flex-wrap:wrap}
+  .stat{background:var(--card); border:1px solid #2a335d; padding:8px 12px; border-radius:10px; color:var(--muted); box-shadow:var(--shadow)}
+  .stat b{color:var(--ink)}
+
+  .card{
+    background:linear-gradient(180deg,#161a2b,#121629);
+    border:1px solid #2a335d; border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:18px; position:relative; overflow:hidden;
+  }
+
+  /* animated background shimmer */
+  .card::after{
+    content:""; position:absolute; inset:-40%; background:conic-gradient(from 0deg at 50% 50%, #5b8cff22, transparent, #38d39f22, transparent, #ffb02022, transparent);
+    animation:spin 14s linear infinite; filter:blur(42px); opacity:.25; pointer-events:none;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Input row */
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; position:relative; z-index:2}
+  .input{
+    flex:1; display:flex; align-items:center; gap:8px;
+    background:#0f142d; border:1px solid #2a335d; border-radius:12px; padding:10px 12px;
+  }
+  .input input{
+    flex:1; font-size:18px; padding:6px 4px; color:var(--ink);
+    background:transparent; border:none; outline:none; text-align:center;
+  }
+  .btn{
+    background:linear-gradient(180deg,#273159,#1a2141);
+    border:1px solid #2a335d; color:var(--ink); padding:10px 16px;
+    border-radius:12px; font-weight:700; cursor:pointer; transition:transform .08s ease;
+  }
+  .btn:active{transform:scale(.97)}
+  .btn.secondary{background:linear-gradient(180deg,#1a2141,#141a36); color:#c7cdef}
+
+  /* Hint text */
+  .hint{margin-top:10px; color:#c7cdef; background:#101428; border:1px dashed #33406f; border-radius:10px; padding:10px 12px; font-size:14px; opacity:.95; transform:translateY(0); transition:opacity .25s ease, transform .25s ease}
+  .hint.pop{transform:translateY(-2px); opacity:1}
+
+  /* Shake animation for wrong guess */
+  .shake{animation:shake .3s ease}
+  @keyframes shake{
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-6px)}
+    50%{transform:translateX(6px)}
+    75%{transform:translateX(-3px)}
+  }
+
+  /* Range visualizer */
+  .range{
+    margin-top:14px; height:18px; border-radius:999px; position:relative; overflow:hidden;
+    border:1px solid #2a335d; background:#0f142d;
+  }
+  .range-fill{
+    position:absolute; top:0; bottom:0;
+    left:calc(var(--low) * 1%); width:calc((var(--high) - var(--low)) * 1%);
+    background:linear-gradient(90deg, var(--accent), var(--ok));
+    transition:left .35s cubic-bezier(.2,.8,.2,1), width .35s cubic-bezier(.2,.8,.2,1);
+  }
+  .ticks{
+    position:absolute; inset:0; pointer-events:none; opacity:.2;
+    background-image: linear-gradient(to right, rgba(255,255,255,.7) 1px, transparent 1px);
+    background-size: calc(100%/10) 100%; /* ticks every 10 */
+  }
+
+  /* Result banner */
+  .result{
+    margin-top:14px; padding:10px 12px; border-radius:10px; text-align:center; font-weight:700;
+    background:#0f142d; border:1px solid #2a335d; color:var(--ink);
+    opacity:0; transform:translateY(6px); transition:opacity .35s ease, transform .35s ease;
+  }
+  .result.show{opacity:1; transform:translateY(0)}
+  .result.win{background:linear-gradient(180deg,#152a25,#0e1e19); border-color:#1b6a51}
+  .result.lose{background:linear-gradient(180deg,#2a2026,#1c151a); border-color:#6a1b34}
+
+  /* tiny helper chips */
+  .chips{display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:10px}
+  .chip{font-size:12px; color:#c7cdef; background:#0f142d; border:1px solid #2a335d; border-radius:999px; padding:6px 10px}
+
+  /* Canvas sits behind content for confetti */
+  canvas#fx{position:fixed; inset:0; pointer-events:none; z-index:0}
+</style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+
+  <div class="wrap">
+    <header>
+      <div class="badge">Guess the Number — 0 to 100</div>
+      <div class="stats">
+        <div class="stat">Attempts: <b id="tries">0</b></div>
+        <div class="stat">Range: <b id="rangeLbl">0–100</b></div>
+      </div>
+    </header>
+
+    <div class="card" id="card">
+      <div class="row">
+        <div class="input" id="inputBox">
+          <span style="opacity:.7">🔢</span>
+          <input id="guess" type="number" inputmode="numeric" min="0" max="100" placeholder="Enter 0–100" />
+        </div>
+        <button class="btn" id="guessBtn">Guess</button>
+        <button class="btn secondary" id="resetBtn">Reset</button>
+      </div>
+
+      <div class="hint" id="hint">I picked a number from <b>0</b> to <b>100</b>. Try to guess it!</div>
+
+      <div class="range" aria-hidden="true">
+        <div class="ticks"></div>
+        <div class="range-fill" id="rangeFill"></div>
+      </div>
+
+      <div class="chips">
+        <div class="chip">Tip: I’ll say <b>Higher</b> or <b>Lower</b> after each guess.</div>
+        <div class="chip">Smoothly narrows the possible range.</div>
+      </div>
+
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  // --- State ---
+  let secret = rndInt(0,100);
+  let low = 0, high = 100;
+  let tries = 0;
+  let won = false;
+
+  // --- Elements ---
+  const guessInput = document.getElementById('guess');
+  const guessBtn   = document.getElementById('guessBtn');
+  const resetBtn   = document.getElementById('resetBtn');
+  const hint       = document.getElementById('hint');
+  const triesLbl   = document.getElementById('tries');
+  const rangeLbl   = document.getElementById('rangeLbl');
+  const rangeFill  = document.getElementById('rangeFill');
+  const card       = document.getElementById('card');
+  const inputBox   = document.getElementById('inputBox');
+  const resultBox  = document.getElementById('result');
+  const fxCanvas   = document.getElementById('fx');
+  const ctx        = fxCanvas.getContext('2d');
+
+  // --- Init ---
+  fitCanvas(); window.addEventListener('resize', fitCanvas);
+  updateRangeUI(); updateHUD();
+  guessInput.focus();
+
+  // --- Events ---
+  guessBtn.addEventListener('click', onGuess);
+  resetBtn.addEventListener('click', reset);
+  guessInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ onGuess(); } });
+
+  function onGuess(){
+    if (won) return; // block after win until reset
+
+    const v = parseInt(guessInput.value, 10);
+    if (Number.isNaN(v) || v<0 || v>100){
+      nudgeHint("Please enter a number between 0 and 100.", 'warn');
+      shake(inputBox);
+      return;
+    }
+
+    tries++;
+    updateHUD();
+
+    if (v === secret){
+      won = true;
+      nudgeHint(`🎉 Correct! It was <b>${secret}</b>.`, 'ok');
+      revealResult(`You guessed it in ${tries} ${tries===1?'try':'tries'}!`, true);
+      confettiBurst(140); // celebrate
+      // Telegram WebApp hook (optional)
+      if (window.Telegram && window.Telegram.WebApp){
+        try{ window.Telegram.WebApp.sendData(JSON.stringify({ok:true, number:secret, tries})); }catch(e){}
+      }
+      return;
+    }
+
+    // Update range + feedback with animation
+    if (v < secret){
+      if (v+1 > low) low = v + 1;
+      nudgeHint(`Higher ⬆️ — try a number above <b>${v}</b>.`);
+    } else {
+      if (v-1 < high) high = v - 1;
+      nudgeHint(`Lower ⬇️ — try a number below <b>${v}</b>.`);
+    }
+    updateRangeUI();
+    shake(card);
+    selectNext(); // QoL
+  }
+
+  function reset(){
+    secret = rndInt(0,100);
+    low = 0; high = 100; tries = 0; won = false;
+    guessInput.value = '';
+    resultBox.className = 'result';
+    resultBox.textContent = '';
+    nudgeHint('New round! I picked a fresh number from <b>0</b> to <b>100</b>.');
+    updateRangeUI(); updateHUD();
+    selectNext();
+  }
+
+  // --- UI helpers ---
+  function updateRangeUI(){
+    document.documentElement.style.setProperty('--low', low);
+    document.documentElement.style.setProperty('--high', high);
+    rangeLbl.textContent = `${low}–${high}`;
+  }
+  function updateHUD(){ triesLbl.textContent = tries; }
+  function nudgeHint(html, tone){
+    hint.innerHTML = html;
+    hint.classList.remove('pop'); void hint.offsetWidth; hint.classList.add('pop');
+    if (tone==='ok'){ hint.style.borderColor = '#1b6a51'; }
+    else if (tone==='warn'){ hint.style.borderColor = '#6a521b'; }
+    else { hint.style.borderColor = '#33406f'; }
+  }
+  function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+
+  function revealResult(text, win){
+    resultBox.textContent = text;
+    resultBox.classList.add('show');
+    resultBox.classList.toggle('win', !!win);
+    resultBox.classList.toggle('lose', !win);
+  }
+  function selectNext(){
+    guessInput.focus();
+    guessInput.select();
+  }
+
+  // --- Confetti (tiny canvas burst) ---
+  const pieces = [];
+  function fitCanvas(){
+    fxCanvas.width = window.innerWidth;
+    fxCanvas.height = window.innerHeight;
+  }
+  function confettiBurst(count=120){
+    pieces.length = 0;
+    const colors = ['#5b8cff','#38d39f','#ffb020','#ff5c7a','#cde7ff','#fff1b8'];
+    const origin = elCenter(card);
+    for(let i=0;i<count;i++){
+      pieces.push({
+        x:origin.x, y:origin.y,
+        vx:(Math.random()-0.5)*8,
+        vy:(Math.random()-1.2)*-12 - Math.random()*4,
+        g:0.35 + Math.random()*0.15,
+        s:4 + Math.random()*3,
+        r:Math.random()*Math.PI,
+        vr:(Math.random()-0.5)*0.3,
+        c:colors[(Math.random()*colors.length)|0],
+        life: 60 + (Math.random()*40|0)
+      });
+    }
+    requestAnimationFrame(tick);
+  }
+  function tick(){
+    ctx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+    let alive = 0;
+    for (const p of pieces){
+      if (p.life>0){
+        alive++; p.life--;
+        p.vy += p.g; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.r);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.s/2, -p.s/2, p.s, p.s);
+        ctx.restore();
+      }
+    }
+    if (alive>0) requestAnimationFrame(tick);
+  }
+  function elCenter(el){
+    const rect = el.getBoundingClientRect();
+    return { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+  }
+
+  // --- Utils ---
+  function rndInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+})();
+</script>
+</body>
+</html>
