@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Four Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 25px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .game-title {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7aa, #f9ca24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 20px rgba(255, 107, 107, 0.5); }
+            to { text-shadow: 0 0 30px rgba(78, 205, 196, 0.5); }
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 25px;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .player-info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px 25px;
+            border-radius: 20px;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+
+        .player-info.active {
+            border-color: #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+
+        .player-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            vertical-align: middle;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .red { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
+        .yellow { background: linear-gradient(135deg, #f9ca24, #f0932b); }
+
+        #gameCanvas {
+            border: 4px solid #fff;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            box-shadow: 
+                0 0 30px rgba(255, 255, 255, 0.3),
+                inset 0 0 50px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.9;
+            line-height: 1.8;
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 25px;
+            text-align: center;
+            z-index: 100;
+            border: 3px solid #4ecdc4;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translate(-50%, -60%) scale(0.8); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .game-over h2 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 0 0 15px rgba(78, 205, 196, 0.8);
+        }
+
+        .winner {
+            color: #4ecdc4;
+        }
+
+        .draw {
+            color: #f9ca24;
+        }
+
+        .action-btn {
+            background: linear-gradient(45deg, #4ecdc4, #45b7aa);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.4);
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 25px rgba(78, 205, 196, 0.6);
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .score {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .game-title {
+                font-size: 2em;
+            }
+            
+            #gameCanvas {
+                width: 350px;
+                height: 300px;
+            }
+            
+            .game-info {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .score-board {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+        .winning-line {
+            animation: winPulse 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes winPulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+
+        .drop-hint {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            opacity: 0.5;
+            animation: dropHint 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes dropHint {
+            from { transform: translateY(-5px); opacity: 0.3; }
+            to { transform: translateY(5px); opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="game-title">🔴 CONNECT FOUR 🟡</h1>
+        
+        <div class="score-board">
+            <div class="score">
+                Red Wins: <span id="redScore">0</span>
+            </div>
+            <div class="score">
+                Yellow Wins: <span id="yellowScore">0</span>
+            </div>
+        </div>
+        
+        <div class="game-info">
+            <div class="player-info active" id="player1Info">
+                <div class="player-color red"></div>
+                Red Player
+            </div>
+            <div class="player-info" id="player2Info">
+                <div class="player-color yellow"></div>
+                Yellow Player
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas" width="560" height="480"></canvas>
+        
+        <div class="controls">
+            <strong>How to Play:</strong><br>
+            Drop your colored discs to get 4 in a row!<br>
+            <strong>Mouse:</strong> Click on columns to drop discs<br>
+            <strong>Keyboard:</strong> <br>
+            • Press 1-7 keys for direct column drop<br>
+            • Use ← → arrow keys to select, Space/Enter to drop<br>
+            • Press 'R' to restart game<br>
+            <strong>Mobile:</strong> Tap on columns to drop discs
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2 id="gameResult">Player Wins!</h2>
+        <p id="gameMessage">Congratulations on your victory!</p>
+        <button class="action-btn" onclick="restartGame()">Play Again</button>
+        <button class="action-btn" onclick="resetScores()">Reset Scores</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game constants
+        const ROWS = 6;
+        const COLS = 7;
+        const CELL_SIZE = 70;
+        const DISC_RADIUS = 28;
+        const MARGIN = 35;
+
+        // Game state
+        let board = [];
+        let currentPlayer = 1; // 1 = red, 2 = yellow
+        let gameRunning = true;
+        let animatingDisc = null;
+        let winningCells = [];
+        let redScore = 0;
+        let yellowScore = 0;
+        let hoverColumn = -1;
+        let selectedColumn = 3; // For keyboard navigation
+
+        // Colors
+        const COLORS = {
+            empty: 'rgba(255, 255, 255, 0.1)',
+            red: ['#ff6b6b', '#ee5a52'],
+            yellow: ['#f9ca24', '#f0932b'],
+            board: '#1e3c72',
+            highlight: '#fff'
+        };
+
+        // Initialize game board
+        function initBoard() {
+            board = [];
+            for (let row = 0; row < ROWS; row++) {
+                board[row] = [];
+                for (let col = 0; col < COLS; col++) {
+                    board[row][col] = 0;
+                }
+            }
+            currentPlayer = 1;
+            gameRunning = true;
+            animatingDisc = null;
+            winningCells = [];
+            hoverColumn = -1;
+            selectedColumn = 3; // Reset to center
+            updatePlayerDisplay();
+        }
+
+        // Draw the game board
+        function drawBoard() {
+            // Clear canvas
+            ctx.fillStyle = COLORS.board;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw board background with gradient
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#2a5298');
+            gradient.addColorStop(1, '#1e3c72');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid and discs
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const x = col * (CELL_SIZE + 10) + MARGIN;
+                    const y = row * (CELL_SIZE + 10) + MARGIN;
+                    
+                    drawDisc(x + CELL_SIZE/2, y + CELL_SIZE/2, board[row][col], 
+                            winningCells.some(cell => cell.row === row && cell.col === col));
+                }
+            }
+
+            // Draw hover hint or keyboard selection
+            let displayColumn = hoverColumn >= 0 ? hoverColumn : selectedColumn;
+            if (displayColumn >= 0 && displayColumn < COLS && gameRunning && !animatingDisc) {
+                const x = displayColumn * (CELL_SIZE + 10) + MARGIN + CELL_SIZE/2;
+                const y = 20;
+                drawHoverHint(x, y, currentPlayer);
+                
+                // Add keyboard selection indicator
+                if (hoverColumn < 0) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(displayColumn * (CELL_SIZE + 10) + MARGIN - 5, 
+                                 MARGIN - 5, CELL_SIZE + 10, (CELL_SIZE + 10) * ROWS);
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // Draw animating disc
+            if (animatingDisc) {
+                drawDisc(animatingDisc.x, animatingDisc.y, animatingDisc.player, false);
+            }
+        }
+
+        // Draw a single disc
+        function drawDisc(x, y, player, isWinning = false) {
+            ctx.save();
+            
+            if (isWinning) {
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 20;
+            }
+
+            if (player === 0) {
+                // Empty slot
+                ctx.fillStyle = COLORS.empty;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+            } else {
+                // Player disc with gradient
+                const colors = player === 1 ? COLORS.red : COLORS.yellow;
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, DISC_RADIUS);
+                gradient.addColorStop(0, colors[0]);
+                gradient.addColorStop(1, colors[1]);
+                ctx.fillStyle = gradient;
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 3;
+            }
+
+            ctx.beginPath();
+            ctx.arc(x, y, DISC_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Add highlight for filled discs
+            if (player !== 0) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(x - 8, y - 8, DISC_RADIUS * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        // Draw hover hint
+        function drawHoverHint(x, y, player) {
+            ctx.save();
+            ctx.globalAlpha = 0.6;
+            
+            const colors = player === 1 ? COLORS.red : COLORS.yellow;
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, DISC_RADIUS);
+            gradient.addColorStop(0, colors[0]);
+            gradient.addColorStop(1, colors[1]);
+            ctx.fillStyle = gradient;
+            
+            ctx.beginPath();
+            ctx.arc(x, y, DISC_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        // Get column from mouse position
+        function getColumnFromX(mouseX) {
+            for (let col = 0; col < COLS; col++) {
+                const x = col * (CELL_SIZE + 10) + MARGIN;
+                if (mouseX >= x && mouseX <= x + CELL_SIZE) {
+                    return col;
+                }
+            }
+            return -1;
+        }
+
+        // Find the lowest available row in a column
+        function getLowestRow(col) {
+            for (let row = ROWS - 1; row >= 0; row--) {
+                if (board[row][col] === 0) {
+                    return row;
+                }
+            }
+            return -1;
+        }
+
+        // Animate disc drop
+        function animateDiscDrop(col, row, player, callback) {
+            const startX = col * (CELL_SIZE + 10) + MARGIN + CELL_SIZE/2;
+            const startY = -DISC_RADIUS;
+            const endY = row * (CELL_SIZE + 10) + MARGIN + CELL_SIZE/2;
+            
+            animatingDisc = {
+                x: startX,
+                y: startY,
+                player: player,
+                targetY: endY,
+                velocity: 0,
+                gravity: 0.8
+            };
+
+            const animate = () => {
+                if (animatingDisc) {
+                    animatingDisc.velocity += animatingDisc.gravity;
+                    animatingDisc.y += animatingDisc.velocity;
+
+                    // Bounce effect when reaching target
+                    if (animatingDisc.y >= animatingDisc.targetY) {
+                        animatingDisc.y = animatingDisc.targetY;
+                        animatingDisc.velocity *= -0.6;
+                        
+                        if (Math.abs(animatingDisc.velocity) < 1) {
+                            animatingDisc = null;
+                            board[row][col] = player;
+                            callback();
+                            return;
+                        }
+                    }
+
+                    drawBoard();
+                    requestAnimationFrame(animate);
+                }
+            };
+
+            requestAnimationFrame(animate);
+        }
+
+        // Check for four in a row
+        function checkWin(row, col, player) {
+            const directions = [
+                [0, 1],   // horizontal
+                [1, 0],   // vertical
+                [1, 1],   // diagonal /
+                [1, -1]   // diagonal \
+            ];
+
+            for (let [deltaRow, deltaCol] of directions) {
+                let count = 1;
+                const winCells = [{row, col}];
+
+                // Check positive direction
+                let r = row + deltaRow;
+                let c = col + deltaCol;
+                while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+                    winCells.push({row: r, col: c});
+                    count++;
+                    r += deltaRow;
+                    c += deltaCol;
+                }
+
+                // Check negative direction
+                r = row - deltaRow;
+                c = col - deltaCol;
+                while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+                    winCells.push({row: r, col: c});
+                    count++;
+                    r -= deltaRow;
+                    c -= deltaCol;
+                }
+
+                if (count >= 4) {
+                    winningCells = winCells;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Check for draw
+        function checkDraw() {
+            for (let col = 0; col < COLS; col++) {
+                if (board[0][col] === 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Handle game end
+        function endGame(winner) {
+            gameRunning = false;
+            
+            if (winner) {
+                if (winner === 1) {
+                    redScore++;
+                    document.getElementById('redScore').textContent = redScore;
+                    document.getElementById('gameResult').textContent = 'Red Player Wins!';
+                    document.getElementById('gameResult').className = 'winner';
+                    document.getElementById('gameMessage').textContent = 'Great job connecting four red discs!';
+                } else {
+                    yellowScore++;
+                    document.getElementById('yellowScore').textContent = yellowScore;
+                    document.getElementById('gameResult').textContent = 'Yellow Player Wins!';
+                    document.getElementById('gameResult').className = 'winner';
+                    document.getElementById('gameMessage').textContent = 'Excellent four yellow discs in a row!';
+                }
+            } else {
+                document.getElementById('gameResult').textContent = 'It\'s a Draw!';
+                document.getElementById('gameResult').className = 'draw';
+                document.getElementById('gameMessage').textContent = 'The board is full - nobody wins this round!';
+            }
+
+            setTimeout(() => {
+                document.getElementById('gameOver').style.display = 'block';
+            }, 1500);
+        }
+
+        // Update player display
+        function updatePlayerDisplay() {
+            const player1Info = document.getElementById('player1Info');
+            const player2Info = document.getElementById('player2Info');
+            
+            if (currentPlayer === 1) {
+                player1Info.classList.add('active');
+                player2Info.classList.remove('active');
+            } else {
+                player1Info.classList.remove('active');
+                player2Info.classList.add('active');
+            }
+        }
+
+        // Handle disc drop
+        function dropDisc(col) {
+            if (!gameRunning || animatingDisc) return;
+
+            const row = getLowestRow(col);
+            if (row === -1) return; // Column is full
+
+            const player = currentPlayer;
+            
+            animateDiscDrop(col, row, player, () => {
+                if (checkWin(row, col, player)) {
+                    endGame(player);
+                } else if (checkDraw()) {
+                    endGame(null);
+                } else {
+                    currentPlayer = currentPlayer === 1 ? 2 : 1;
+                    updatePlayerDisplay();
+                }
+                drawBoard();
+            });
+        }
+
+        // Mouse event handlers
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const col = getColumnFromX(mouseX);
+            
+            if (col >= 0) {
+                dropDisc(col);
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameRunning) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const col = getColumnFromX(mouseX);
+            
+            if (col !== hoverColumn) {
+                hoverColumn = col;
+                selectedColumn = col >= 0 ? col : selectedColumn; // Sync keyboard selection
+                drawBoard();
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            hoverColumn = -1;
+            drawBoard();
+        });
+
+        // Touch event handlers
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touchX = e.touches[0].clientX - rect.left;
+            const col = getColumnFromX(touchX);
+            
+            if (col >= 0) {
+                dropDisc(col);
+            }
+        });
+
+        // Keyboard event handlers
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    restartGame();
+                }
+                return;
+            }
+
+            // Direct column selection with number keys 1-7
+            if (e.key >= '1' && e.key <= '7') {
+                const col = parseInt(e.key) - 1;
+                selectedColumn = col;
+                hoverColumn = -1; // Disable mouse hover when using keyboard
+                dropDisc(col);
+                drawBoard();
+                return;
+            }
+
+            // Arrow key navigation
+            switch (e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    e.preventDefault();
+                    selectedColumn = Math.max(0, selectedColumn - 1);
+                    hoverColumn = -1;
+                    drawBoard();
+                    break;
+                    
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    e.preventDefault();
+                    selectedColumn = Math.min(COLS - 1, selectedColumn + 1);
+                    hoverColumn = -1;
+                    drawBoard();
+                    break;
+                    
+                case ' ':
+                case 'Enter':
+                    e.preventDefault();
+                    dropDisc(selectedColumn);
+                    break;
+                    
+                case 'r':
+                case 'R':
+                    e.preventDefault();
+                    restartGame();
+                    break;
+            }
+        });
+
+        // Game control functions
+        function restartGame() {
+            document.getElementById('gameOver').style.display = 'none';
+            initBoard();
+            drawBoard();
+        }
+
+        function resetScores() {
+            redScore = 0;
+            yellowScore = 0;
+            document.getElementById('redScore').textContent = redScore;
+            document.getElementById('yellowScore').textContent = yellowScore;
+            restartGame();
+        }
+
+        // Initialize game
+        initBoard();
+        drawBoard();
+
+        // Initial message
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🔴 CONNECT FOUR 🟡', canvas.width / 2, canvas.height / 2 - 50);
+        
+        ctx.font = '16px Arial';
+        ctx.fillText('Click column or press 1-7 keys to drop disc', canvas.width / 2, canvas.height / 2 - 10);
+        
+        ctx.font = '14px Arial';
+        ctx.fillText('Use arrow keys + Space for keyboard control', canvas.width / 2, canvas.height / 2 + 15);
+        
+        ctx.font = '16px Arial';
+        ctx.fillText('Get 4 in a row to win!', canvas.width / 2, canvas.height / 2 + 40);
+    </script>
+</body>
+</html>
