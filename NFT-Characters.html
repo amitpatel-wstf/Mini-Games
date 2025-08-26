@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Character Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .generator-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .canvas-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        #characterCanvas {
+            border: 3px solid #333;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        .btn {
+            padding: 15px;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        
+        .btn:hover::after {
+            opacity: 1;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #54a0ff, #2e86de);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #feca57, #ff9f3f);
+            color: white;
+        }
+        
+        .btn-download {
+            background: linear-gradient(45deg, #1dd1a1, #10ac84);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .combination-display {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .minted-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .minted-item {
+            padding: 5px 10px;
+            margin: 2px 0;
+            background: white;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #badbcc;
+            color: #155724;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 15px;
+            }
+            
+            #characterCanvas {
+                width: 100%;
+                height: auto;
+                max-width: 100%;
+            }
+            
+            .canvas-container {
+                width: 100%;
+                max-width: 500px;
+                margin: 0 auto 20px;
+            }
+            
+            .controls {
+                max-width: 100%;
+                justify-content: space-around;
+                margin-bottom: 20px;
+            }
+            
+            .btn {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }
+            
+            .info-card {
+                padding: 15px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .btn {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .info-title {
+                font-size: 16px;
+            }
+            
+            .stat-value {
+                font-size: 16px;
+            }
+            
+            .stat-label {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 1000;">
+        <h2>Loading Character Generator</h2>
+        <div style="width: 80%; max-width: 300px; height: 20px; background: #333; border-radius: 10px; margin: 20px 0; overflow: hidden;">
+            <div id="loadingProgress" style="height: 100%; width: 0%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s;"></div>
+        </div>
+        <p id="loadingText">Loading assets... 0%</p>
+    </div>
+
+    <div class="container">
+        <div class="generator-section">
+            <div class="canvas-container">
+                <canvas id="characterCanvas" width="500" height="500"></canvas>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="shuffleCharacter()" data-tooltip="Shuffle">
+                    <span class="icon">🎲</span>
+                </button>
+                <button class="btn btn-secondary" onclick="mintCharacter()" data-tooltip="Mint">
+                    <span class="icon">✨</span>
+                </button>
+                <button class="btn btn-download" onclick="downloadCharacter()" data-tooltip="Download">
+                    <span class="icon">💾</span>
+                </button>
+                <button class="btn btn-warning" onclick="resetGenerator()" data-tooltip="Reset">
+                    <span class="icon">🔄</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div id="alertContainer"></div>
+            
+            <div class="info-card">
+                <div class="info-title">Current Character</div>
+                <div id="currentCombination" class="combination-display">Click Shuffle to Generate</div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-title">Statistics</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div id="totalMinted" class="stat-value">0</div>
+                        <div class="stat-label">Minted</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="totalPossible" class="stat-value">216</div>
+                        <div class="stat-label">Total Possible</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="rarityPercentage" class="stat-value">0%</div>
+                        <div class="stat-label">Collection Complete</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="shuffleCount" class="stat-value">0</div>
+                        <div class="stat-label">Shuffles</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-title">Minted Characters</div>
+                <div id="mintedList" class="minted-list">
+                    <div style="text-align: center; color: #666; padding: 20px;">
+                        No characters minted yet
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Asset definitions using images from public directory
+        const assets = {
+            face: Array.from({length: 16}, (_, i) => ({
+                id: `f${i+1}`,
+                name: `Face ${i+1}`,
+                path: i < 4 ? `face/face_${i+1}.png` : `face/Face_${i+1}.png`,
+                rarity: i < 4 ? 'Common' : i < 10 ? 'Uncommon' : i < 14 ? 'Rare' : 'Legendary'
+            })).filter((_, i) => i !== 3), // Remove one face to make it 15 total (5x5x6=150 combinations)
+            
+            eye: Array.from({length: 14}, (_, i) => ({
+                id: `e${i+1}`,
+                name: `Eyes ${i+1}`,
+                path: `eyes/eyes_${i+1}.png`,
+                rarity: i < 5 ? 'Common' : i < 10 ? 'Uncommon' : 'Rare'
+            })),
+            
+            smile: Array.from({length: 14}, (_, i) => ({
+                id: `s${i+1}`,
+                name: `Smile ${i+1}`,
+                path: `smile/smile_${i+1}.png`,
+                rarity: i < 5 ? 'Common' : i < 10 ? 'Uncommon' : 'Rare'
+            }))
+        };
+
+        // Game state
+        let currentCharacter = null;
+        let mintedCharacters = new Set();
+        let shuffleCount = 0;
+        let canvas = null;
+        let ctx = null;
+        
+        // Image cache
+        const imageCache = new Map();
+        let imagesLoaded = 0;
+        const totalImages = Object.values(assets).reduce((sum, arr) => sum + arr.length, 0);
+
+        // Load an image and cache it
+        function loadImage(path) {
+            if (imageCache.has(path)) return Promise.resolve(imageCache.get(path));
+            
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    imageCache.set(path, img);
+                    imagesLoaded++;
+                    updateLoadingProgress();
+                    resolve(img);
+                };
+                img.onerror = () => {
+                    console.error(`Failed to load image: ${path}`);
+                    imagesLoaded++;
+                    updateLoadingProgress();
+                    resolve(null);
+                };
+                img.src = path;
+            });
+        }
+        
+        // Update loading progress
+        function updateLoadingProgress() {
+            const progress = Math.floor((imagesLoaded / totalImages) * 100);
+            document.getElementById('loadingProgress').style.width = `${progress}%`;
+            document.getElementById('loadingText').textContent = `Loading assets... ${progress}%`;
+            
+            if (progress >= 100) {
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    shuffleCharacter(); // Generate first character
+                }, 500);
+            }
+        }
+        
+        // Preload all assets
+        async function preloadAssets() {
+            const loadPromises = [];
+            
+            // Preload all face images
+            assets.face.forEach(face => {
+                loadPromises.push(loadImage(`public/${face.path}`));
+            });
+            
+            // Preload all eye images
+            assets.eye.forEach(eye => {
+                loadPromises.push(loadImage(`public/${eye.path}`));
+            });
+            
+            // Preload all smile images
+            assets.smile.forEach(smile => {
+                loadPromises.push(loadImage(`public/${smile.path}`));
+            });
+            
+            await Promise.all(loadPromises);
+        }
+        
+        // Initialize the application
+        async function init() {
+            canvas = document.getElementById('characterCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Show loading overlay
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            
+            // Preload all assets
+            await preloadAssets();
+            
+            updateStats();
+        }
+
+        // Generate random character combination
+        function generateRandomCharacter() {
+            const face = assets.face[Math.floor(Math.random() * assets.face.length)];
+            const eye = assets.eye[Math.floor(Math.random() * assets.eye.length)];
+            const smile = assets.smile[Math.floor(Math.random() * assets.smile.length)];
+            
+            return {
+                face: face,
+                eye: eye,
+                smile: smile,
+                combination: face.id + eye.id + smile.id
+            };
+        }
+
+        // Draw character on canvas
+        async function drawCharacter(character) {
+            if (!character) return;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, 500, 500);
+
+            // Draw background
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, 500, 500);
+
+            try {
+                // Draw face (base layer)
+                await drawLayer(character.face, 0, 0, 500, 500);
+                
+                // Draw eyes (middle layer)
+                await drawLayer(character.eye, 0, 0, 500, 500);
+                
+                // Draw smile (top layer)
+                await drawLayer(character.smile, 0, 0, 500, 500);
+                
+                // Add character info text
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(character.combination, 250, 480);
+                
+            } catch (error) {
+                console.error('Error drawing character:', error);
+                showAlert('Error drawing character. Please try again.', 'warning');
+            }
+        }
+        
+        // Helper function to draw a layer with error handling
+        async function drawLayer(asset, x, y, width, height) {
+            try {
+                const img = imageCache.get(`public/${asset.path}`);
+                if (img) {
+                    ctx.drawImage(img, x, y, width, height);
+                } else {
+                    console.warn(`Image not found: ${asset.path}`);
+                }
+            } catch (error) {
+                console.error(`Error drawing ${asset.path}:`, error);
+                throw error;
+            }
+        }
+
+        function drawFace(face) {
+            ctx.fillStyle = face.color;
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+
+            switch(face.id) {
+                case 'f1': // Round
+                    ctx.beginPath();
+                    ctx.arc(250, 200, 120, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    break;
+                case 'f2': // Square
+                    ctx.fillRect(130, 80, 240, 240);
+                    ctx.strokeRect(130, 80, 240, 240);
+                    break;
+                case 'f3': // Heart
+                    drawHeart(250, 150, 100);
+                    break;
+                case 'f4': // Diamond
+                    drawDiamond(250, 200, 120);
+                    break;
+                case 'f5': // Star
+                    drawStar(250, 200, 5, 100, 50);
+                    break;
+                case 'f6': // Hexagon
+                    drawHexagon(250, 200, 100);
+                    break;
+            }
+        }
+
+        function drawEyes(eye) {
+            ctx.fillStyle = eye.color;
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+
+            switch(eye.id) {
+                case 'e1': // Normal
+                    ctx.beginPath();
+                    ctx.arc(210, 170, 15, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(290, 170, 15, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    break;
+                case 'e2': // Wide
+                    ctx.fillRect(190, 160, 30, 20);
+                    ctx.strokeRect(190, 160, 30, 20);
+                    ctx.fillRect(280, 160, 30, 20);
+                    ctx.strokeRect(280, 160, 30, 20);
+                    break;
+                case 'e3': // Sleepy
+                    ctx.beginPath();
+                    ctx.arc(210, 175, 10, 0, Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(290, 175, 10, 0, Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    break;
+                case 'e4': // Wink
+                    ctx.beginPath();
+                    ctx.arc(210, 170, 15, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.stroke();
+                    // Winking eye (line)
+                    ctx.beginPath();
+                    ctx.moveTo(275, 170);
+                    ctx.lineTo(305, 170);
+                    ctx.stroke();
+                    break;
+                case 'e5': // Laser
+                    ctx.fillRect(195, 165, 30, 10);
+                    ctx.strokeRect(195, 165, 30, 10);
+                    ctx.fillRect(275, 165, 30, 10);
+                    ctx.strokeRect(275, 165, 30, 10);
+                    // Laser beams
+                    ctx.strokeStyle = eye.color;
+                    ctx.lineWidth = 3;
+                    for(let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(225, 170);
+                        ctx.lineTo(225 + i * 10, 140);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(290, 170);
+                        ctx.lineTo(290 + i * 10, 140);
+                        ctx.stroke();
+                    }
+                    break;
+                case 'e6': // Galaxy
+                    drawGalaxyEyes();
+                    break;
+            }
+        }
+
+        function drawSmile(smile) {
+            ctx.strokeStyle = smile.color;
+            ctx.fillStyle = smile.color;
+            ctx.lineWidth = 5;
+
+            switch(smile.id) {
+                case 's1': // Happy
+                    ctx.beginPath();
+                    ctx.arc(250, 210, 40, 0, Math.PI);
+                    ctx.stroke();
+                    break;
+                case 's2': // Grin
+                    ctx.fillRect(220, 240, 60, 10);
+                    ctx.strokeRect(220, 240, 60, 10);
+                    break;
+                case 's3': // Smirk
+                    ctx.beginPath();
+                    ctx.arc(270, 230, 30, 0, Math.PI);
+                    ctx.stroke();
+                    break;
+                case 's4': // Laugh
+                    ctx.beginPath();
+                    ctx.arc(250, 200, 50, 0, Math.PI);
+                    ctx.stroke();
+                    // Teeth
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    for(let i = 0; i < 5; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(210 + i * 16, 230);
+                        ctx.lineTo(210 + i * 16, 245);
+                        ctx.stroke();
+                    }
+                    break;
+                case 's5': // Cheeky
+                    ctx.beginPath();
+                    ctx.arc(250, 220, 35, Math.PI * 0.2, Math.PI * 0.8);
+                    ctx.stroke();
+                    // Tongue
+                    ctx.fillStyle = '#ff69b4';
+                    ctx.beginPath();
+                    ctx.arc(250, 250, 8, 0, 2 * Math.PI);
+                    ctx.fill();
+                    break;
+                case 's6': // Mysterious
+                    ctx.beginPath();
+                    ctx.arc(250, 250, 20, Math.PI, 0);
+                    ctx.stroke();
+                    break;
+            }
+        }
+
+        // Helper drawing functions
+        function drawHeart(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y + size/4);
+            ctx.quadraticCurveTo(x - size, y - size/2, x - size/2, y - size/2);
+            ctx.quadraticCurveTo(x, y - size, x + size/2, y - size/2);
+            ctx.quadraticCurveTo(x + size, y - size/2, x, y + size/4);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawDiamond(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - size);
+            ctx.lineTo(x + size, y);
+            ctx.lineTo(x, y + size);
+            ctx.lineTo(x - size, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawStar(x, y, points, outer, inner) {
+            ctx.beginPath();
+            for(let i = 0; i < points * 2; i++) {
+                const radius = i % 2 === 0 ? outer : inner;
+                const angle = (i * Math.PI) / points - Math.PI / 2;
+                const px = x + Math.cos(angle) * radius;
+                const py = y + Math.sin(angle) * radius;
+                i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawHexagon(x, y, size) {
+            ctx.beginPath();
+            for(let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const px = x + Math.cos(angle) * size;
+                const py = y + Math.sin(angle) * size;
+                i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawGalaxyEyes() {
+            // Create gradient for galaxy effect
+            const gradient = ctx.createRadialGradient(210, 170, 0, 210, 170, 20);
+            gradient.addColorStop(0, '#ff00ff');
+            gradient.addColorStop(0.5, '#00ffff');
+            gradient.addColorStop(1, '#000080');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(210, 170, 20, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(290, 170, 20, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // Shuffle character
+        async function shuffleCharacter() {
+            let newCharacter;
+            let attempts = 0;
+            const maxAttempts = 50;
+            const totalPossible = assets.face.length * assets.eye.length * assets.smile.length;
+            
+            if (mintedCharacters.size >= totalPossible) {
+                showAlert('All possible combinations have been minted!', 'warning');
+                return;
+            }
+
+            do {
+                newCharacter = generateRandomCharacter();
+                attempts++;
+            } while (mintedCharacters.has(newCharacter.combination) && attempts < maxAttempts);
+
+            if (attempts >= maxAttempts && mintedCharacters.has(newCharacter.combination)) {
+                showAlert('Could not find unminted combination. Try minting existing ones first!', 'warning');
+                return;
+            }
+
+            currentCharacter = newCharacter;
+            shuffleCount++;
+            
+            await drawCharacter(currentCharacter);
+            updateCurrentCombination();
+            updateStats();
+            clearAlert();
+        }
+
+        // Mint character
+        async function mintCharacter() {
+            if (!currentCharacter) {
+                showAlert('Please shuffle to generate a character first!', 'warning');
+                return;
+            }
+
+            if (mintedCharacters.has(currentCharacter.combination)) {
+                showAlert(`Character ${currentCharacter.combination} is already minted! Shuffling new character...`, 'warning');
+                await shuffleCharacter();
+                return;
+            }
+
+            // Successfully mint
+            mintedCharacters.add(currentCharacter.combination);
+            showAlert(`Successfully minted ${currentCharacter.combination}!`, 'success');
+            
+            // Save to localStorage
+            localStorage.setItem('mintedCharacters', JSON.stringify(Array.from(mintedCharacters)));
+            
+            updateMintedList();
+            updateStats();
+            
+            // Auto shuffle for next character
+            setTimeout(async () => {
+                await shuffleCharacter();
+            }, 1500);
+        }
+
+        // Download character as PNG
+        function downloadCharacter() {
+            if (!currentCharacter) {
+                showAlert('Please generate a character first!', 'warning');
+                return;
+            }
+            
+            // Create a temporary link
+            const link = document.createElement('a');
+            link.download = `nft-character-${currentCharacter.combination}.png`;
+            
+            // Convert canvas to blob
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                link.href = url;
+                
+                // Trigger download
+                document.body.appendChild(link);
+                link.click();
+                
+                // Clean up
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                showAlert('NFT character downloaded successfully!', 'success');
+            }, 'image/png');
+        }
+        
+        // Reset generator
+        function resetGenerator() {
+            if (confirm('Are you sure you want to reset all data? This will clear all minted characters.')) {
+                mintedCharacters.clear();
+                localStorage.removeItem('mintedCharacters');
+                shuffleCount = 0;
+                currentCharacter = null;
+                ctx.clearRect(0, 0, 500, 500);
+                updateCurrentCombination();
+                updateMintedList();
+                updateStats();
+                clearAlert();
+            }
+        }
+
+        // UI Update functions
+        function updateCurrentCombination() {
+            const element = document.getElementById('currentCombination');
+            if (currentCharacter) {
+                element.innerHTML = `
+                    <strong>${currentCharacter.combination}</strong><br>
+                    Face: ${currentCharacter.face.name} (${currentCharacter.face.rarity})<br>
+                    Eyes: ${currentCharacter.eye.name} (${currentCharacter.eye.rarity})<br>
+                    Smile: ${currentCharacter.smile.name} (${currentCharacter.smile.rarity})
+                `;
+            } else {
+                element.textContent = 'Click Shuffle to Generate';
+            }
+        }
+
+        function updateMintedList() {
+            const listElement = document.getElementById('mintedList');
+            if (mintedCharacters.size === 0) {
+                listElement.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No characters minted yet</div>';
+            } else {
+                listElement.innerHTML = Array.from(mintedCharacters)
+                    .sort()
+                    .map(combo => `<div class="minted-item">${combo}</div>`)
+                    .join('');
+            }
+        }
+
+        function updateStats() {
+            const totalPossible = assets.face.length * assets.eye.length * assets.smile.length;
+            const completionPercentage = Math.round((mintedCharacters.size / totalPossible) * 100);
+            
+            document.getElementById('totalMinted').textContent = mintedCharacters.size;
+            document.getElementById('totalPossible').textContent = totalPossible;
+            document.getElementById('rarityPercentage').textContent = completionPercentage + '%';
+            document.getElementById('shuffleCount').textContent = shuffleCount;
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertClass = type === 'warning' ? 'alert-warning' : 'alert-success';
+            alertContainer.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+        }
+
+        function clearAlert() {
+            setTimeout(() => {
+                document.getElementById('alertContainer').innerHTML = '';
+            }, 3000);
+        }
+
+        // Load saved data from localStorage
+        function loadSavedData() {
+            const savedMinted = localStorage.getItem('mintedCharacters');
+            if (savedMinted) {
+                mintedCharacters = new Set(JSON.parse(savedMinted));
+                updateMintedList();
+            }
+        }
+        
+        // Initialize the app when page loads
+        window.onload = function() {
+            loadSavedData();
+            init();
+        };
+    </script>
+</body>
+</html>
