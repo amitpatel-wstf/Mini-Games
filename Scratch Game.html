@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scratch & Redeem</title>
+  <style>
+    :root{
+      --card-w: 360px;
+      --radius: 16px;
+      --bg: #0b1020;
+      --ink: #ffffff;
+      --accent: #6c5ce7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      background: #0b1020;
+      color: var(--ink);
+      font-family: system-ui, sans-serif;
+    }
+    .card {
+      width: min(92vw, var(--card-w));
+      aspect-ratio: 16 / 10;
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .prize {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 0;
+    }
+    .points {
+      font-size: clamp(40px, 12vw, 64px);
+      font-weight: 800;
+    }
+    .points small {
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    canvas#cover {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      touch-action: none;
+    }
+    .cta {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: 0;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button[disabled] {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    .status {
+      font-size: 14px;
+      opacity: .9;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <div class="card" id="card">
+      <div class="prize">
+        <div class="points" id="points">—<small>Points</small></div>
+      </div>
+      <canvas id="cover"></canvas>
+    </div>
+    <div class="cta">
+      <button id="redeemBtn" disabled>Redeem</button>
+      <span class="status" id="status">Scratch to reveal your points…</span>
+    </div>
+  </div>
+
+<script>
+(function () {
+  // random points 5–10
+  const points = Math.floor(Math.random() * 6) + 5;
+  document.getElementById('points').innerHTML = points + '<small>Points</small>';
+
+  const card = document.getElementById('card');
+  const canvas = document.getElementById('cover');
+  const redeemBtn = document.getElementById('redeemBtn');
+  const statusEl = document.getElementById('status');
+
+  let ctx, drawing = false, clearedPercent = 0, redeemed = false;
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = "https://i.ibb.co/KcszLkBM/gorb-logo.png";
+
+  function sizeCanvas() {
+    const rect = card.getBoundingClientRect();
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    drawOverlay(rect.width, rect.height);
+  }
+
+  function drawOverlay(w, h) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(img, 0, 0, w, h);  // 🖼️ draw your logo as cover
+    ctx.globalCompositeOperation = 'destination-out'; // enable erasing
+  }
+
+  const BRUSH = 22;
+  function scratchAt(x, y) {
+    ctx.beginPath();
+    ctx.arc(x, y, BRUSH, 0, Math.PI * 2);
+    ctx.fill();
+    throttleCheck();
+  }
+
+  function estimateClearedPercent() {
+    const { width: wCSS, height: hCSS } = canvas.getBoundingClientRect();
+    const imgData = ctx.getImageData(0, 0, wCSS, hCSS);
+    const data = imgData.data;
+    let cleared = 0, total = 0;
+    for (let i = 3; i < data.length; i += 4 * 8) {
+      total++;
+      if (data[i] === 0) cleared++;
+    }
+    return (cleared / total) * 100;
+  }
+
+  let checkPending = false;
+  function throttleCheck() {
+    if (checkPending) return;
+    checkPending = true;
+    requestAnimationFrame(() => {
+      clearedPercent = estimateClearedPercent();
+      updateStatus();
+      if (clearedPercent >= 60) redeemBtn.disabled = false;
+      checkPending = false;
+    });
+  }
+
+  function updateStatus() {
+    if (redeemed) {
+      statusEl.textContent = `Redeemed ${points} points 🎉`;
+    } else {
+      statusEl.textContent = `Scratched: ${Math.round(clearedPercent)}%`;
+    }
+  }
+
+  // pointer events
+  function pos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+  canvas.addEventListener('pointerdown', e => {
+    if (redeemed) return;
+    drawing = true;
+    scratchAt(...Object.values(pos(e)));
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing || redeemed) return;
+    scratchAt(...Object.values(pos(e)));
+  });
+  canvas.addEventListener('pointerup', () => drawing = false);
+  canvas.addEventListener('pointerleave', () => drawing = false);
+
+  redeemBtn.addEventListener('click', () => {
+    if (redeemed) return;
+    redeemed = true;
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // clear whole overlay
+    canvas.style.pointerEvents = 'none';
+    redeemBtn.disabled = true;
+    updateStatus();
+  });
+
+  img.onload = sizeCanvas;
+})();
+</script>
+</body>
+</html>
