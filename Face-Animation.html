@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Password Eyes</title>
+<style>
+  :root { --swap-speed: 260ms; }
+
+  body {
+    margin: 0;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    background: #0f0f10;
+    color: #e9e9ea;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .card {
+    display: grid;
+    gap: 18px;
+    justify-items: center;
+  }
+
+  /* --- Mascot image stack --- */
+  .mascot {
+    position: relative;
+    width: 120px;        /* fixed size */
+    height: 120px;       /* fixed size */
+    background: #0f0f10; /* same background for both images */
+    border-radius: 50%;  /* optional: makes it circular */
+    overflow: hidden;
+  }
+
+  .mascot img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    
+    object-fit: contain;
+    background: #0f0f10; /* ensures transparent parts match */
+    transition: opacity var(--swap-speed) ease-in-out, transform var(--swap-speed) ease-in-out;
+    will-change: opacity, transform;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* default: eyes open */
+  .mascot .open { opacity: 1; }
+  .mascot .closed { opacity: 0; transform: translateY(-2px); }
+
+  /* while typing: eyes closed */
+  .mascot.typing .open { opacity: 0; }
+  .mascot.typing .closed { opacity: 1; transform: translateY(0); }
+
+  /* input styling */
+  .field {
+    display: grid;
+    gap: 8px;
+    width: min(90vw, 360px);
+  }
+  .field label {
+    font-size: 0.95rem;
+    color: #b9b9bd;
+  }
+  .field input {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #2a2a2e;
+    background: #151518;
+    color: #fff;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 120ms ease-in-out, box-shadow 120ms ease-in-out;
+  }
+  .field input:focus {
+    border-color: #7a5cff;
+    box-shadow: 0 0 0 3px rgba(122,92,255,.2);
+  }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <div id="mascot" class="mascot" aria-hidden="true">
+      <!-- OPEN eyes image -->
+      <img class="open" src="./open_eye_img.png" alt="Mascot eyes open">
+      <!-- CLOSED eyes image -->
+      <img class="closed" src="./close_eye_img.png" alt="Mascot eyes closed">
+    </div>
+
+    <div class="field">
+      <label for="pwd">Password</label>
+      <input id="pwd" type="password" placeholder="Enter your password" autocomplete="current-password">
+    </div>
+  </div>
+
+<script>
+  (function () {
+    const pwd = document.getElementById('pwd');
+    const mascot = document.getElementById('mascot');
+    let typingTimer;
+    const blinkDelay = 700; // ms before reopening eyes
+
+    function closeEyes() {
+      mascot.classList.add('typing');
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(openEyes, blinkDelay);
+    }
+
+    function openEyes() {
+      mascot.classList.remove('typing');
+    }
+
+    pwd.addEventListener('input', closeEyes);
+    pwd.addEventListener('focus', openEyes);
+    pwd.addEventListener('blur', openEyes);
+  })();
+</script>
+</body>
+</html>
+
